@@ -19,10 +19,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
@@ -157,9 +159,31 @@ def _finalize_session(commits: list[dict], first_bonus: timedelta) -> dict:
     }
 
 
+# ── Repo → Client/Project mapping ─────────────────────────────────────────────
+
+def load_repo_mapping(path: str | None) -> dict[str, dict[str, str]]:
+    """Load repo → {client, project} mapping from a JSON file."""
+    if path is None:
+        path = str(Path(__file__).resolve().parent.parent / "config" / "repo-mapping.json")
+    if not os.path.isfile(path):
+        print(f"Warning: repo mapping file not found at {path}, using empty mapping.", file=sys.stderr)
+        return {}
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("repos", {})
+
+
+def get_client_project(repo: str, mapping: dict[str, dict[str, str]]) -> tuple[str, str]:
+    """Return (client, project) for a repo, falling back to Other / Other."""
+    entry = mapping.get(repo)
+    if entry:
+        return entry["client"], entry["project"]
+    return "Other", "Other"
+
+
 # ── Aggregation helpers ──────────────────────────────────────────────────────
 
-def aggregate(sessions: list[dict], commits: list[dict]) -> dict:
+def aggregate(sessions: list[dict], commits: list[dict], repo_mapping: dict[str, dict[str, str]] | None = None) -> dict:
     """Build all summary data structures."""
     total_hours = sum(s["duration"].total_seconds() / 3600 for s in sessions)
     total_commits = len(commits)
@@ -197,6 +221,28 @@ def aggregate(sessions: list[dict], commits: list[dict]) -> dict:
     active_days = len(day_table)
     avg_hours = total_hours / active_days if active_days else 0
 
+    # Per-client/project
+    mapping = repo_mapping or {}
+    client_hours: dict[tuple[str, str], float] = defaultdict(float)
+    client_commits: dict[tuple[str, str], int] = defaultdict(int)
+    for repo, h in repo_hours.items():
+        client, project = get_client_project(repo, mapping)
+        client_hours[(client, project)] += h
+    for c in commits:
+        client, project = get_client_project(c["repo"], mapping)
+        client_commits[(client, project)] += 1
+
+    client_table = []
+    for key in sorted(client_hours, key=lambda k: client_hours[k], reverse=True):
+        h = client_hours[key]
+        client_table.append({
+            "client": key[0],
+            "project": key[1],
+            "hours": h,
+            "commits": client_commits.get(key, 0),
+            "pct": (h / total_hours * 100) if total_hours else 0,
+        })
+
     return {
         "total_hours": total_hours,
         "total_commits": total_commits,
@@ -204,6 +250,7 @@ def aggregate(sessions: list[dict], commits: list[dict]) -> dict:
         "active_days": active_days,
         "avg_hours_per_day": avg_hours,
         "repo_table": repo_table,
+        "client_table": client_table,
         "day_table": day_table,
         "sessions": sessions,
     }
@@ -222,6 +269,16 @@ def format_console(agg: dict, args: argparse.Namespace) -> str:
     lines.append(f"Total sessions:         {agg['total_sessions']}")
     lines.append(f"Active days:            {agg['active_days']}")
     lines.append(f"Avg hours/active day:   {agg['avg_hours_per_day']:.1f}h")
+    lines.append("")
+
+    # Per-client table
+    lines.append("Per-Client Breakdown")
+    lines.append("-" * 70)
+    lines.append(f"{'Client / Project':<40} {'Hours':>6} {'Commits':>8} {'%':>5}")
+    lines.append("-" * 70)
+    for r in agg["client_table"]:
+        label = f"{r['client']} / {r['project']}"
+        lines.append(f"{label:<40} {r['hours']:>6.1f} {r['commits']:>8} {r['pct']:>5.1f}")
     lines.append("")
 
     # Per-repo table
@@ -263,6 +320,17 @@ def format_markdown(agg: dict, args: argparse.Namespace) -> str:
     lines.append(f"| Total sessions | {agg['total_sessions']} |")
     lines.append(f"| Active days | {agg['active_days']} |")
     lines.append(f"| Avg hours/active day | {agg['avg_hours_per_day']:.1f}h |")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    # Per-client
+    lines.append("## Per-Client Breakdown")
+    lines.append("")
+    lines.append("| Client | Project | Hours | Commits | % of Time |")
+    lines.append("|--------|---------|------:|--------:|----------:|")
+    for r in agg["client_table"]:
+        lines.append(f"| {r['client']} | {r['project']} | {r['hours']:.1f} | {r['commits']} | {r['pct']:.1f}% |")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -338,6 +406,7 @@ def format_json(agg: dict, args: argparse.Namespace) -> str:
             "avg_hours_per_day": round(agg["avg_hours_per_day"], 2),
         },
         "repos": agg["repo_table"],
+        "clients": agg["client_table"],
         "days": agg["day_table"],
         "sessions": [
             {
@@ -377,6 +446,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--format", choices=["console", "markdown", "json"], default="console", help="Output format (default: console)")
     p.add_argument("--output", help="Write to file instead of stdout")
     p.add_argument("--emails", nargs="*", help="Additional author emails to search")
+    p.add_argument("--repo-map", help="Path to repo-mapping JSON file (default: config/repo-mapping.json)")
     return p.parse_args(argv)
 
 
@@ -402,8 +472,11 @@ def main(argv: list[str] | None = None) -> None:
     sessions = build_sessions(commits, max_gap, first_bonus)
     print(f"Grouped into {len(sessions)} work sessions.", file=sys.stderr)
 
+    # Load repo mapping
+    repo_mapping = load_repo_mapping(args.repo_map)
+
     # Aggregate
-    agg = aggregate(sessions, commits)
+    agg = aggregate(sessions, commits, repo_mapping)
 
     # Format
     formatters = {"console": format_console, "markdown": format_markdown, "json": format_json}

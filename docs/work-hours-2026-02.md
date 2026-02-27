@@ -1,4 +1,4 @@
-# Work Hours Estimate: 2026-02-01 to 2026-02-28
+# Work Hours Estimate: 2026-02-01 to 2026-02-26
 
 **Author:** ehalsey  
 **Timezone:** America/Los_Angeles  
@@ -10,11 +10,26 @@
 
 | Metric | Value |
 |--------|-------|
-| Total estimated hours | **108.9h** |
-| Total commits | 275 |
+| Total estimated hours | **109.2h** |
+| Total commits | 277 |
 | Total sessions | 45 |
 | Active days | 22 |
 | Avg hours/active day | 5.0h |
+
+---
+
+## Per-Client Breakdown
+
+| Client | Project | Hours | Commits | % of Time |
+|--------|---------|------:|--------:|----------:|
+| Modern Accounting | Modern Accounting | 48.7 | 122 | 44.6% |
+| MBC | Front Office / EHR | 36.0 | 90 | 33.0% |
+| PAS | PAS Platform | 8.9 | 33 | 8.2% |
+| Bamert Seed | Bamert | 6.7 | 10 | 6.1% |
+| ACTO (internal) | Infrastructure | 4.5 | 5 | 4.1% |
+| ACTO (internal) | Strategy / Biz Dev | 1.6 | 9 | 1.5% |
+| ACTO (internal) | Tooling / Agents | 1.5 | 3 | 1.3% |
+| Personal | Personal | 1.3 | 5 | 1.2% |
 
 ---
 
@@ -22,18 +37,18 @@
 
 | Repository | Hours | Commits | % of Time |
 |------------|------:|--------:|----------:|
-| ACTO-LLC/modern-accounting | 48.0 | 120 | 44.1% |
-| MBC-ORG-EHR/frontoffice | 31.8 | 82 | 29.2% |
-| ACTO-LLC/acto-infra | 4.5 | 5 | 4.2% |
+| ACTO-LLC/modern-accounting | 48.0 | 120 | 44.0% |
+| MBC-ORG-EHR/frontoffice | 31.8 | 82 | 29.1% |
+| ACTO-LLC/acto-infra | 4.5 | 5 | 4.1% |
 | ACTO-LLC/mbc-pm | 4.2 | 8 | 3.9% |
 | ACTO-LLC/pas-base | 4.0 | 10 | 3.6% |
 | Bamert-Seed/bamert-shopify | 4.0 | 5 | 3.6% |
 | ACTO-LLC/pas-notifications | 3.8 | 15 | 3.5% |
-| ACTO-LLC/scale-sync | 2.7 | 5 | 2.5% |
+| Bamert-Seed/scale-sync | 2.7 | 5 | 2.5% |
 | ehalsey/email-query | 1.3 | 5 | 1.2% |
 | ACTO-LLC/PAS-Crutch | 1.1 | 7 | 1.0% |
 | ACTO-LLC/teams-recording-splitter | 1.0 | 2 | 0.9% |
-| ACTO-LLC/work-analysis | 0.6 | 3 | 0.6% |
+| ACTO-LLC/work-analysis | 0.9 | 5 | 0.8% |
 | ACTO-LLC/strategy-planning | 0.5 | 3 | 0.5% |
 | ACTO-LLC/ma-medplum | 0.5 | 1 | 0.5% |
 | ACTO-LLC/acto-audit-history-daily-job | 0.5 | 1 | 0.5% |
@@ -68,7 +83,7 @@
 | 2026-02-23 | Mon | 13.1 | 2 | 38 |
 | 2026-02-24 | Tue | 9.3 | 3 | 33 |
 | 2026-02-25 | Wed | 10.5 | 3 | 34 |
-| 2026-02-26 | Thu | 6.9 | 1 | 30 |
+| 2026-02-26 | Thu | 7.1 | 1 | 32 |
 
 ---
 
@@ -627,7 +642,7 @@
 
 </details>
 
-<details><summary>Session 45: 2026-02-26 08:20–14:41 (6.9h, 30 commits)</summary>
+<details><summary>Session 45: 2026-02-26 08:20–14:57 (7.1h, 32 commits)</summary>
 
 | Time | Repository | Message |
 |------|------------|---------|
@@ -661,5 +676,7 @@
 | 14:38 | modern-accounting | docs: Add navigate-to-edit pattern guideline to CLAUDE.md |
 | 14:38 | frontoffice | fix: address Copilot review comments on PR #314 |
 | 14:41 | frontoffice | Merge pull request #314 from MBC-ORG-EHR/feat/288-charge-slip-grid-ui |
+| 14:47 | work-analysis | Update Feb 2026 work hours report (108.9h, 275 commits through Feb 26) |
+| 14:57 | work-analysis | Add /work-hours Claude Code skill for generating monthly reports |
 
 </details>
