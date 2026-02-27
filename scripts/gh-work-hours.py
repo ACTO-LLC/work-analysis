@@ -18,13 +18,13 @@ Algorithm
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
@@ -161,16 +161,52 @@ def _finalize_session(commits: list[dict], first_bonus: timedelta) -> dict:
 
 # ── Repo → Client/Project mapping ─────────────────────────────────────────────
 
+def _fetch_remote_config() -> dict:
+    """Fetch clients.json from ACTO-LLC/claude-skills via gh api."""
+    cmd = [
+        "gh", "api",
+        "repos/ACTO-LLC/claude-skills/contents/config/clients.json",
+        "-q", ".content",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    raw = base64.b64decode(result.stdout.strip())
+    return json.loads(raw)
+
+
+def _parse_client_config(data: dict) -> dict[str, dict[str, str]]:
+    """Convert client-centric config to flat {repo_name: {client, project}} dict."""
+    mapping: dict[str, dict[str, str]] = {}
+    for client in data.get("clients", []):
+        name = client["name"]
+        for repo in client.get("repos", []):
+            mapping[repo["name"]] = {"client": name, "project": repo["project"]}
+    return mapping
+
+
 def load_repo_mapping(path: str | None) -> dict[str, dict[str, str]]:
-    """Load repo → {client, project} mapping from a JSON file."""
-    if path is None:
-        path = str(Path(__file__).resolve().parent.parent / "config" / "repo-mapping.json")
-    if not os.path.isfile(path):
-        print(f"Warning: repo mapping file not found at {path}, using empty mapping.", file=sys.stderr)
+    """Load repo → {client, project} mapping.
+
+    If *path* is given, reads a local JSON file (supports both the legacy
+    ``{"repos": ...}`` format and the new ``{"clients": ...}`` format).
+    Otherwise fetches the canonical config from GitHub.
+    """
+    if path is not None:
+        if not os.path.isfile(path):
+            print(f"Warning: repo mapping file not found at {path}, using empty mapping.", file=sys.stderr)
+            return {}
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        # Support both formats
+        if "clients" in data:
+            return _parse_client_config(data)
+        return data.get("repos", {})
+
+    try:
+        data = _fetch_remote_config()
+        return _parse_client_config(data)
+    except Exception as exc:
+        print(f"Warning: could not fetch remote client config: {exc}", file=sys.stderr)
         return {}
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    return data.get("repos", {})
 
 
 def get_client_project(repo: str, mapping: dict[str, dict[str, str]]) -> tuple[str, str]:
@@ -446,7 +482,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--format", choices=["console", "markdown", "json"], default="console", help="Output format (default: console)")
     p.add_argument("--output", help="Write to file instead of stdout")
     p.add_argument("--emails", nargs="*", help="Additional author emails to search")
-    p.add_argument("--repo-map", help="Path to repo-mapping JSON file (default: config/repo-mapping.json)")
+    p.add_argument("--repo-map", help="Path to a local repo-mapping JSON file (overrides fetching from GitHub)")
     return p.parse_args(argv)
 
 
